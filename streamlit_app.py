@@ -5,28 +5,27 @@ import os
 from datetime import date, time, datetime
 from streamlit_option_menu import option_menu
 
+st.set_page_config(page_title="Blood Logistics Tool", layout="wide")
 DATA_FILE = "saved_data.json"
+
+st.title("ONR Blood Mangement Support Tool")
+st.sidebar.header("User Input")
 
 def load_saved_data():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             data = json.load(f)
             for k, v in data.items():
-                st.session_state[k] = v
+                if not ("FormSubmitter:" in k or k.startswith("week_") or k.startswith("simulation_days") or k.startswith("med_platoon_id") or k.startswith("blood_inventory")):
+                    st.session_state[k] = v
 
 def save_session_state():
-    to_save = {
-        k: v for k, v in st.session_state.items()
-        if not (k.startswith("_") or k.startswith("FormSubmitter:"))
-    }
+    to_save = {k: v for k, v in st.session_state.items() if not k.startswith("_")}
     with open(DATA_FILE, "w") as f:
         json.dump(to_save, f, indent=4, default=str)
 
 def main():
-    st.set_page_config(page_title="Blood Logistics Tool", layout="wide")
     load_saved_data()
-
-    st.title("ONR Blood Logistics Interface")
 
     with st.sidebar:
         selected = option_menu(
@@ -48,19 +47,19 @@ def main():
 
 def show_home():
     st.header("Welcome to the Blood Logistics Tool")
-    name = st.text_input("Enter your name")
+    name = st.text_input("Enter your name", value=st.session_state.get("user_name", ""))
+    st.session_state["user_name"] = name
     if name:
         st.success(f"Welcome, {name}! Please navigate to the pages on the left to proceed.")
+        save_session_state()
 
 def show_med_log_company():
     st.header("Medical Logistics Company Page")
 
-    company_id = st.number_input("Medical Logistics Company ID", min_value=0, step=1,
-                                 value=st.session_state.get("company_id", 0))
+    company_id = st.number_input("Medical Logistics Company ID", min_value=0, step=1, value=st.session_state.get("company_id", 0))
     st.session_state["company_id"] = company_id
 
-    num_platoons = st.number_input("Number of Platoons", min_value=0, step=1,
-                                   value=st.session_state.get("num_platoons", 0))
+    num_platoons = st.number_input("Number of Platoons", min_value=0, step=1, value=st.session_state.get("num_platoons", 0))
     st.session_state["num_platoons"] = num_platoons
 
     platoons = []
@@ -72,8 +71,7 @@ def show_med_log_company():
 
         pid = st.text_input(f"Platoon ID {i+1}", value=st.session_state.get(pid_key, ""), key=pid_key)
         size = st.number_input(f"Platoon Size {i+1}", min_value=0, value=st.session_state.get(size_key, 0), key=size_key)
-        days_away = st.number_input(f"Days Away from Home Base (Platoon {i+1})", min_value=0,
-                                    value=st.session_state.get(days_key, 0), key=days_key)
+        days_away = st.number_input(f"Days Away from Home Base (Platoon {i+1})", min_value=0, value=st.session_state.get(days_key, 0), key=days_key)
 
         platoons.append({"Platoon ID": pid, "Size": size, "Days Away": days_away})
 
@@ -89,11 +87,9 @@ def show_med_log_company():
 def show_transport_info():
     st.header("Transport Information Page")
 
-    company_id = st.number_input("Medical Company ID", min_value=0, step=1,
-                                 value=st.session_state.get("transport_company_id", 0), key="transport_company_id")
+    company_id = st.number_input("Medical Company ID", min_value=0, step=1, value=st.session_state.get("transport_company_id", 0), key="transport_company_id")
 
-    num_transports = st.number_input("Number of Transportation Options", min_value=0, step=1,
-                                     value=st.session_state.get("num_transports", 0))
+    num_transports = st.number_input("Number of Transportation Options", min_value=0, step=1, value=st.session_state.get("num_transports", 0))
     st.session_state["num_transports"] = num_transports
 
     transport_methods = ["Helicopter", "Truck", "Boat", "Drone", "Airplane"]
@@ -102,27 +98,20 @@ def show_transport_info():
     for i in range(int(num_transports)):
         st.subheader(f"Transport Option {i+1}")
 
-        method = st.selectbox(f"Select Transportation Method {i+1}", transport_methods,
-                              index=transport_methods.index(st.session_state.get(f"method_{i}", "Helicopter")),
-                              key=f"method_{i}")
+        method = st.selectbox(f"Select Transportation Method {i+1}", transport_methods, index=transport_methods.index(st.session_state.get(f"method_{i}", "Helicopter")), key=f"method_{i}")
 
         lon = st.text_input(f"Longitude for Blood Resource Location {i+1}", value=st.session_state.get(f"lon_{i}", ""), key=f"lon_{i}")
         lat = st.text_input(f"Latitude for Blood Resource Location {i+1}", value=st.session_state.get(f"lat_{i}", ""), key=f"lat_{i}")
-        platoon_id = st.number_input(f"Medical Platoon ID {i+1}", min_value=0,
-                                     value=st.session_state.get(f"platoon_id_{i}", 0), key=f"platoon_id_{i}")
-        days_away = st.number_input(f"Days Away from Platoon Location {i+1}", min_value=0,
-                                    value=st.session_state.get(f"days_away_{i}", 0), key=f"days_away_{i}")
-        num_dates = st.number_input(f"Number of Delivery Dates for Transport {i+1}", min_value=0, max_value=365,
-                                    step=1, value=st.session_state.get(f"num_dates_{i}", 0), key=f"num_dates_{i}")
+        platoon_id = st.number_input(f"Medical Platoon ID {i+1}", min_value=0, value=st.session_state.get(f"platoon_id_{i}", 0), key=f"platoon_id_{i}")
+        days_away = st.number_input(f"Days Away from Platoon Location {i+1}", min_value=0, value=st.session_state.get(f"days_away_{i}", 0), key=f"days_away_{i}")
+        num_dates = st.number_input(f"Number of Delivery Dates for Transport {i+1}", min_value=0, max_value=365, step=1, value=st.session_state.get(f"num_dates_{i}", 0), key=f"num_dates_{i}")
 
         delivery_schedule = []
         for j in range(int(num_dates)):
             st.markdown(f"**Delivery {j+1} for Transport {i+1}**")
-
             date_key = f"transport_deliv_date_{i}_{j}"
             raw_value = st.session_state.get(date_key, date.today())
 
-            # Convert string to date if necessary
             if isinstance(raw_value, str):
                 try:
                     raw_value = date.fromisoformat(raw_value)
@@ -131,25 +120,19 @@ def show_transport_info():
                     raw_value = date.today()
                     st.session_state[date_key] = raw_value
 
-            # Now use it
-            delivery_date = st.date_input(
-                f"Delivery Date {j+1} for Transport {i+1}",
-                value=raw_value,
-                key=date_key
-            )
+            delivery_date = st.date_input(f"Delivery Date {j+1} for Transport {i+1}", value=raw_value, key=date_key)
 
+            pickup_key = f"transport_pickup_{i}_{j}"
+            raw_pickup = st.session_state.get(pickup_key, time(9, 0))
+            if isinstance(raw_pickup, str):
+                try:
+                    raw_pickup = datetime.strptime(raw_pickup, "%H:%M:%S").time()
+                    st.session_state[pickup_key] = raw_pickup
+                except ValueError:
+                    raw_pickup = time(9, 0)
+                    st.session_state[pickup_key] = raw_pickup
 
-            # pickup_key = f"transport_pickup_{i}_{j}"
-            # raw_pickup = st.session_state.get(pickup_key, time(9, 0))
-            # if isinstance(raw_pickup, str):
-            #     try:
-            #         raw_pickup = datetime.strptime(raw_pickup, "%H:%M:%S").time()
-            #         st.session_state[pickup_key] = raw_pickup
-            #     except ValueError:
-            #         raw_pickup = time(9, 0)
-            #         st.session_state[pickup_key] = raw_pickup
-            #
-            # pickup_time = st.time_input(f"Pickup Time on {delivery_date}", value=raw_pickup, key=pickup_key)
+            pickup_time = st.time_input(f"Pickup Time on {delivery_date}", value=raw_pickup, key=pickup_key)
 
             dropoff_key = f"transport_dropoff_{i}_{j}"
             raw_dropoff = st.session_state.get(dropoff_key, time(10, 0))
@@ -163,13 +146,11 @@ def show_transport_info():
 
             dropoff_time = st.time_input(f"Drop-off Time on {delivery_date}", value=raw_dropoff, key=dropoff_key)
 
-
-            capacity = st.number_input(f"Capacity (pints) for Delivery {j+1} for Transport {i+1}", min_value=0,
-                                       value=st.session_state.get(f"transport_capacity_{i}_{j}", 0), key=f"transport_capacity_{i}_{j}")
+            capacity = st.number_input(f"Capacity (pints) for Delivery {j+1} for Transport {i+1}", min_value=0, value=st.session_state.get(f"transport_capacity_{i}_{j}", 0), key=f"transport_capacity_{i}_{j}")
 
             delivery_schedule.append({
                 "Date": delivery_date.strftime("%Y-%m-%d"),
-                #"Pickup Time": pickup_time.strftime("%H:%M"),
+                "Pickup Time": pickup_time.strftime("%H:%M"),
                 "Drop-off Time": dropoff_time.strftime("%H:%M"),
                 "Capacity (pints)": capacity
             })
@@ -191,17 +172,26 @@ def show_conflict_prediction():
     st.header("Conflict Prediction Page")
 
     if "user_data" not in st.session_state:
-        st.session_state["user_data"] = []
+        st.session_state.user_data = []
 
-    with st.form("conflict_prediction_form"):
-        simulation_days = st.number_input("Length of Simulation in Days:", min_value=0,
-                                          value=st.session_state.get("simulation_days", 0), key="simulation_days")
+    with st.form(key="conflict_prediction_form"):
+        simulation_days = st.number_input(
+            "Length of Simulation in Days:", min_value=0,
+            value=st.session_state.get("simulation_days", 0),
+            key="simulation_days"
+        )
 
-        med_platoon_id = st.number_input("Medical Platoon ID:", min_value=0,
-                                         value=st.session_state.get("med_platoon_id", 0), key="med_platoon_id")
+        med_platoon_id = st.number_input(
+            "Medical Platoon ID:", min_value=0,
+            value=st.session_state.get("med_platoon_id", 0),
+            key="med_platoon_id"
+        )
 
-        blood_inventory = st.number_input("Fresh Whole Blood Inventory on Hand (pints):", min_value=0,
-                                          value=st.session_state.get("blood_inventory", 0), key="blood_inventory")
+        blood_inventory = st.number_input(
+            "Fresh Whole Blood Inventory on Hand (pints):", min_value=0,
+            value=st.session_state.get("blood_inventory", 0),
+            key="blood_inventory"
+        )
 
         st.markdown("### Weekly Combat Intelligence Assessment")
         conflict_matrix = []
@@ -217,10 +207,8 @@ def show_conflict_prediction():
                 for level in range(4):
                     slider_key = f"week_{week}_level_{level}"
                     val = st.slider(
-                        f"{conflict_level_labels[level]} (0–5):",
-                        min_value=0, max_value=5, step=1,
-                        value=st.session_state.get(slider_key, 0),
-                        key=slider_key
+                        f"{conflict_level_labels[level]} (0–5):", min_value=0, max_value=5,
+                        step=1, value=st.session_state.get(slider_key, 0), key=slider_key
                     )
                     total += val
                     week_data.append(val)
@@ -228,42 +216,32 @@ def show_conflict_prediction():
                     st.error(f"Week {week + 1}: Conflict levels must sum to 5 (currently {total}).")
                 conflict_matrix.append(week_data)
 
-
         submit = st.form_submit_button("Submit")
 
-    # Handle the form submission (outside the `with`)
-    if submit:
-        errors = [
-            f"Week {i + 1} conflict level sliders must sum to 5."
-            for i, week in enumerate(conflict_matrix) if sum(week) != 5
-        ]
+        if submit:
+            errors = [f"Week {i + 1} conflict level sliders must sum to 5." for i, week in enumerate(conflict_matrix) if sum(week) != 5]
 
-        if errors:
-            for e in errors:
-                st.error(e)
-        else:
-            new_entry = {
-                "Length of Simulation in Days": simulation_days,
-                "Medical Platoon ID": med_platoon_id,
-                "Fresh Whole Blood Inventory on Hand (pints)": blood_inventory,
-                "Weekly Conflict Level Distribution": {
-                    "Labels": conflict_level_labels,
-                    "Data": conflict_matrix
+            if errors:
+                for e in errors:
+                    st.error(e)
+            else:
+                new_entry = {
+                    "Length of Simulation in Days": simulation_days,
+                    "Medical Platoon ID": med_platoon_id,
+                    "Fresh Whole Blood Inventory on Hand (pints)": blood_inventory,
+                    "Weekly Conflict Level Distribution": {
+                        "Labels": conflict_level_labels,
+                        "Data": conflict_matrix
+                    }
                 }
-            }
+                st.session_state.user_data.append(new_entry)
+                save_session_state()
+                st.success("Data added successfully!")
 
-            existing = st.session_state.get("user_data", [])
-            existing.append(new_entry)
-            st.session_state["user_data"] = existing
-
-            save_session_state()
-            st.success("Data added successfully!")
-
-    # Show saved data
     st.subheader("Stored User Data")
-    if st.session_state.get("user_data"):
-        st.json(st.session_state["user_data"])
-        json_data = json.dumps(st.session_state["user_data"], indent=4)
+    if st.session_state.user_data:
+        st.json(st.session_state.user_data)
+        json_data = json.dumps(st.session_state.user_data, indent=4)
         json_file = io.BytesIO(json_data.encode())
         st.download_button(
             label="Download JSON File",
