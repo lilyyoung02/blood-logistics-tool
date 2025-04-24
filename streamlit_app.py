@@ -15,7 +15,10 @@ def load_saved_data():
                 st.session_state[k] = v
 
 def save_session_state():
-    to_save = {k: v for k, v in st.session_state.items() if not k.startswith("_")}
+    to_save = {
+        k: v for k, v in st.session_state.items()
+        if not (k.startswith("_") or k.startswith("FormSubmitter:"))
+    }
     with open(DATA_FILE, "w") as f:
         json.dump(to_save, f, indent=4, default=str)
 
@@ -136,17 +139,17 @@ def show_transport_info():
             )
 
 
-            pickup_key = f"transport_pickup_{i}_{j}"
-            raw_pickup = st.session_state.get(pickup_key, time(9, 0))
-            if isinstance(raw_pickup, str):
-                try:
-                    raw_pickup = datetime.strptime(raw_pickup, "%H:%M:%S").time()
-                    st.session_state[pickup_key] = raw_pickup  # ✅ Update the session state
-                except ValueError:
-                    raw_pickup = time(9, 0)
-                    st.session_state[pickup_key] = raw_pickup
-
-            pickup_time = st.time_input(f"Pickup Time on {delivery_date}", value=raw_pickup, key=pickup_key)
+            # pickup_key = f"transport_pickup_{i}_{j}"
+            # raw_pickup = st.session_state.get(pickup_key, time(9, 0))
+            # if isinstance(raw_pickup, str):
+            #     try:
+            #         raw_pickup = datetime.strptime(raw_pickup, "%H:%M:%S").time()
+            #         st.session_state[pickup_key] = raw_pickup
+            #     except ValueError:
+            #         raw_pickup = time(9, 0)
+            #         st.session_state[pickup_key] = raw_pickup
+            #
+            # pickup_time = st.time_input(f"Pickup Time on {delivery_date}", value=raw_pickup, key=pickup_key)
 
             dropoff_key = f"transport_dropoff_{i}_{j}"
             raw_dropoff = st.session_state.get(dropoff_key, time(10, 0))
@@ -166,7 +169,7 @@ def show_transport_info():
 
             delivery_schedule.append({
                 "Date": delivery_date.strftime("%Y-%m-%d"),
-                "Pickup Time": pickup_time.strftime("%H:%M"),
+                #"Pickup Time": pickup_time.strftime("%H:%M"),
                 "Drop-off Time": dropoff_time.strftime("%H:%M"),
                 "Capacity (pints)": capacity
             })
@@ -188,20 +191,17 @@ def show_conflict_prediction():
     st.header("Conflict Prediction Page")
 
     if "user_data" not in st.session_state:
-        st.session_state.user_data = []
+        st.session_state["user_data"] = []
 
     with st.form("conflict_prediction_form"):
         simulation_days = st.number_input("Length of Simulation in Days:", min_value=0,
-                                          value=st.session_state.get("simulation_days", 0))
-        st.session_state["simulation_days"] = simulation_days
+                                          value=st.session_state.get("simulation_days", 0), key="simulation_days")
 
         med_platoon_id = st.number_input("Medical Platoon ID:", min_value=0,
-                                         value=st.session_state.get("med_platoon_id", 0))
-        st.session_state["med_platoon_id"] = med_platoon_id
+                                         value=st.session_state.get("med_platoon_id", 0), key="med_platoon_id")
 
         blood_inventory = st.number_input("Fresh Whole Blood Inventory on Hand (pints):", min_value=0,
-                                          value=st.session_state.get("blood_inventory", 0))
-        st.session_state["blood_inventory"] = blood_inventory
+                                          value=st.session_state.get("blood_inventory", 0), key="blood_inventory")
 
         st.markdown("### Weekly Combat Intelligence Assessment")
         conflict_matrix = []
@@ -228,10 +228,15 @@ def show_conflict_prediction():
                     st.error(f"Week {week + 1}: Conflict levels must sum to 5 (currently {total}).")
                 conflict_matrix.append(week_data)
 
+
         submit = st.form_submit_button("Submit")
 
+    # Handle the form submission (outside the `with`)
     if submit:
-        errors = [f"Week {i + 1} conflict level sliders must sum to 5." for i, week in enumerate(conflict_matrix) if sum(week) != 5]
+        errors = [
+            f"Week {i + 1} conflict level sliders must sum to 5."
+            for i, week in enumerate(conflict_matrix) if sum(week) != 5
+        ]
 
         if errors:
             for e in errors:
@@ -246,14 +251,19 @@ def show_conflict_prediction():
                     "Data": conflict_matrix
                 }
             }
-            st.session_state.user_data.append(new_entry)
+
+            existing = st.session_state.get("user_data", [])
+            existing.append(new_entry)
+            st.session_state["user_data"] = existing
+
             save_session_state()
             st.success("Data added successfully!")
 
+    # Show saved data
     st.subheader("Stored User Data")
-    if st.session_state.user_data:
-        st.json(st.session_state.user_data)
-        json_data = json.dumps(st.session_state.user_data, indent=4)
+    if st.session_state.get("user_data"):
+        st.json(st.session_state["user_data"])
+        json_data = json.dumps(st.session_state["user_data"], indent=4)
         json_file = io.BytesIO(json_data.encode())
         st.download_button(
             label="Download JSON File",
